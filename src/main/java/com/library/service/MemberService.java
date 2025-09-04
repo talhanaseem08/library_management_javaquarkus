@@ -1,17 +1,18 @@
 package com.library.service;
 
-import com.library.dto.MemberDTO;
+import com.library.dto.MemberRequestDTO;
+import com.library.dto.MemberResponseDTO;
 import java.util.List;
 
 public interface MemberService {
     
-    List<MemberDTO> getAllMembers();
+    List<MemberResponseDTO> getAllMembers();
     
-    MemberDTO getMemberById(String id);
+    MemberResponseDTO getMemberById(String id);
     
-    MemberDTO createMember(MemberDTO memberDTO);
+    MemberResponseDTO createMember(MemberRequestDTO memberRequestDTO);
     
-    MemberDTO updateMember(String id, MemberDTO memberDTO);
+    MemberResponseDTO updateMember(String id, MemberRequestDTO memberRequestDTO);
     
     void deleteMember(String id);
 }

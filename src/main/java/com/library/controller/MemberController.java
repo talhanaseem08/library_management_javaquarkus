@@ -1,6 +1,7 @@
 package com.library.controller;
 
-import com.library.dto.MemberDTO;
+import com.library.dto.MemberRequestDTO;
+import com.library.dto.MemberResponseDTO;
 import com.library.service.MemberService;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -34,7 +35,7 @@ public class MemberController {
     })
     public Response getAllMembers() {
         LOG.info("GET /members - Retrieving all members");
-        List<MemberDTO> members = memberService.getAllMembers();
+        List<MemberResponseDTO> members = memberService.getAllMembers();
         return Response.ok(members).build();
     }
     
@@ -48,7 +49,7 @@ public class MemberController {
     })
     public Response getMemberById(@PathParam("id") String id) {
         LOG.info("GET /members/" + id + " - Retrieving member by ID");
-        MemberDTO member = memberService.getMemberById(id);
+        MemberResponseDTO member = memberService.getMemberById(id);
         return Response.ok(member).build();
     }
     
@@ -59,9 +60,9 @@ public class MemberController {
         @APIResponse(responseCode = "400", description = "Invalid input data"),
         @APIResponse(responseCode = "500", description = "Internal server error")
     })
-    public Response createMember(@Valid MemberDTO memberDTO) {
-        LOG.info("POST /members - Creating new member: " + memberDTO);
-        MemberDTO createdMember = memberService.createMember(memberDTO);
+    public Response createMember(@Valid MemberRequestDTO memberRequestDTO) {
+        LOG.info("POST /members - Creating new member: " + memberRequestDTO);
+        MemberResponseDTO createdMember = memberService.createMember(memberRequestDTO);
         return Response.status(Response.Status.CREATED).entity(createdMember).build();
     }
     
@@ -74,9 +75,9 @@ public class MemberController {
         @APIResponse(responseCode = "404", description = "Member not found"),
         @APIResponse(responseCode = "500", description = "Internal server error")
     })
-    public Response updateMember(@PathParam("id") String id, @Valid MemberDTO memberDTO) {
+    public Response updateMember(@PathParam("id") String id, @Valid MemberRequestDTO memberRequestDTO) {
         LOG.info("PUT /members/" + id + " - Updating member");
-        MemberDTO updatedMember = memberService.updateMember(id, memberDTO);
+        MemberResponseDTO updatedMember = memberService.updateMember(id, memberRequestDTO);
         return Response.ok(updatedMember).build();
     }
     

@@ -1,6 +1,7 @@
 package com.library.service.impl;
 
-import com.library.dto.BookDTO;
+import com.library.dto.BookRequestDTO;
+import com.library.dto.BookResponseDTO;
 import com.library.exception.BookNotFoundException;
 import com.library.service.BookService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -15,18 +16,18 @@ public class BookServiceImpl implements BookService {
     private static final Logger LOG = Logger.getLogger(BookServiceImpl.class);
     
     // In-memory storage using ConcurrentHashMap for thread safety
-    private final Map<String, BookDTO> books = new ConcurrentHashMap<>();
+    private final Map<String, BookResponseDTO> books = new ConcurrentHashMap<>();
     
     @Override
-    public List<BookDTO> getAllBooks() {
+    public List<BookResponseDTO> getAllBooks() {
         LOG.info("Retrieving all books. Total books: " + books.size());
         return new ArrayList<>(books.values());
     }
     
     @Override
-    public BookDTO getBookById(String id) {
+    public BookResponseDTO getBookById(String id) {
         LOG.info("Retrieving book with ID: " + id);
-        BookDTO book = books.get(id);
+        BookResponseDTO book = books.get(id);
         if (book == null) {
             LOG.error("Book not found with ID: " + id);
             throw new BookNotFoundException("Book not found with ID: " + id);
@@ -35,19 +36,40 @@ public class BookServiceImpl implements BookService {
     }
     
     @Override
-    public BookDTO createBook(BookDTO bookDTO) {
-        String id = UUID.randomUUID().toString();
-        bookDTO.setId(id);
-        bookDTO.setAvailable(true); // New books are available by default
+    public BookResponseDTO createBook(BookRequestDTO bookRequestDTO) {
+        LOG.info("Creating new book: " + bookRequestDTO);
         
-        books.put(id, bookDTO);
-        LOG.info("Created new book: " + bookDTO);
+        // Check if book already exists (same title and author)
+        BookResponseDTO existingBook = findBookByTitleAndAuthor(bookRequestDTO.getTitle(), bookRequestDTO.getAuthor());
         
-        return bookDTO;
+        if (existingBook != null) {
+            // Book exists, increase quantity
+            LOG.info("Book already exists, increasing quantity. Current quantity: " + existingBook.getQuantity());
+            existingBook.setQuantity(existingBook.getQuantity() + 1);
+            existingBook.setAvailable(existingBook.getQuantity() > 0);
+            books.put(existingBook.getId(), existingBook);
+            LOG.info("Updated book quantity: " + existingBook);
+            return existingBook;
+        } else {
+            // New book, create with quantity 1
+            String id = UUID.randomUUID().toString().substring(0,5);
+            BookResponseDTO bookResponseDTO = new BookResponseDTO(
+                id, 
+                bookRequestDTO.getTitle(), 
+                bookRequestDTO.getAuthor(), 
+                true, // New books are available by default
+                1    // Start with quantity 1
+            );
+            
+            books.put(id, bookResponseDTO);
+            LOG.info("Created new book: " + bookResponseDTO);
+            
+            return bookResponseDTO;
+        }
     }
     
     @Override
-    public BookDTO updateBook(String id, BookDTO bookDTO) {
+    public BookResponseDTO updateBook(String id, BookRequestDTO bookRequestDTO) {
         LOG.info("Updating book with ID: " + id);
         
         if (!books.containsKey(id)) {
@@ -55,11 +77,19 @@ public class BookServiceImpl implements BookService {
             throw new BookNotFoundException("Book not found with ID: " + id);
         }
         
-        bookDTO.setId(id);
-        books.put(id, bookDTO);
-        LOG.info("Updated book: " + bookDTO);
+        BookResponseDTO existingBook = books.get(id);
+        BookResponseDTO updatedBook = new BookResponseDTO(
+            id,
+            bookRequestDTO.getTitle(),
+            bookRequestDTO.getAuthor(),
+            existingBook.getQuantity() > 0, // Available if quantity > 0
+            existingBook.getQuantity() // Keep existing quantity
+        );
         
-        return bookDTO;
+        books.put(id, updatedBook);
+        LOG.info("Updated book: " + updatedBook);
+        
+        return updatedBook;
     }
     
     @Override
@@ -76,14 +106,72 @@ public class BookServiceImpl implements BookService {
     }
     
     @Override
-    public BookDTO updateBookAvailability(String id, boolean available) {
+    public BookResponseDTO updateBookAvailability(String id, boolean available) {
         LOG.info("Updating book availability. ID: " + id + ", Available: " + available);
         
-        BookDTO book = getBookById(id);
-        book.setAvailable(available);
-        books.put(id, book);
+        BookResponseDTO book = getBookById(id);
+        BookResponseDTO updatedBook = new BookResponseDTO(
+            book.getId(),
+            book.getTitle(),
+            book.getAuthor(),
+            available,
+            book.getQuantity()
+        );
+        books.put(id, updatedBook);
         
-        LOG.info("Updated book availability: " + book);
-        return book;
+        LOG.info("Updated book availability: " + updatedBook);
+        return updatedBook;
+    }
+    
+    // New method to decrease quantity when book is lent
+    public BookResponseDTO decreaseBookQuantity(String id) {
+        LOG.info("Decreasing book quantity. ID: " + id);
+        
+        BookResponseDTO book = getBookById(id);
+        if (book.getQuantity() <= 0) {
+            LOG.error("Book has no quantity available. ID: " + id);
+            throw new RuntimeException("Book has no quantity available. ID: " + id);
+        }
+        
+        int newQuantity = book.getQuantity() - 1;
+        BookResponseDTO updatedBook = new BookResponseDTO(
+            book.getId(),
+            book.getTitle(),
+            book.getAuthor(),
+            newQuantity > 0, // Available if quantity > 0
+            newQuantity
+        );
+        books.put(id, updatedBook);
+        
+        LOG.info("Decreased book quantity: " + updatedBook);
+        return updatedBook;
+    }
+    
+    // New method to increase quantity when book is returned
+    public BookResponseDTO increaseBookQuantity(String id) {
+        LOG.info("Increasing book quantity. ID: " + id);
+        
+        BookResponseDTO book = getBookById(id);
+        int newQuantity = book.getQuantity() + 1;
+        BookResponseDTO updatedBook = new BookResponseDTO(
+            book.getId(),
+            book.getTitle(),
+            book.getAuthor(),
+            true, // Always available when returned
+            newQuantity
+        );
+        books.put(id, updatedBook);
+        
+        LOG.info("Increased book quantity: " + updatedBook);
+        return updatedBook;
+    }
+    
+    // Helper method to find book by title and author
+    private BookResponseDTO findBookByTitleAndAuthor(String title, String author) {
+        return books.values().stream()
+                .filter(book -> book.getTitle().equalsIgnoreCase(title) && 
+                               book.getAuthor().equalsIgnoreCase(author))
+                .findFirst()
+                .orElse(null);
     }
 }

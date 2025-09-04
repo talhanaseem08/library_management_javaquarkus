@@ -1,19 +1,25 @@
 package com.library.service;
 
-import com.library.dto.BookDTO;
+import com.library.dto.BookRequestDTO;
+import com.library.dto.BookResponseDTO;
 import java.util.List;
 
 public interface BookService {
     
-    List<BookDTO> getAllBooks();
+    List<BookResponseDTO> getAllBooks();
     
-    BookDTO getBookById(String id);
+    BookResponseDTO getBookById(String id);
     
-    BookDTO createBook(BookDTO bookDTO);
+    BookResponseDTO createBook(BookRequestDTO bookRequestDTO);
     
-    BookDTO updateBook(String id, BookDTO bookDTO);
+    BookResponseDTO updateBook(String id, BookRequestDTO bookRequestDTO);
     
     void deleteBook(String id);
     
-    BookDTO updateBookAvailability(String id, boolean available);
+    BookResponseDTO updateBookAvailability(String id, boolean available);
+    
+    // New methods for quantity management
+    BookResponseDTO decreaseBookQuantity(String id);
+    
+    BookResponseDTO increaseBookQuantity(String id);
 }

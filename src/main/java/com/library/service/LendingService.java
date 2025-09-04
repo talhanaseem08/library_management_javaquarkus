@@ -1,17 +1,18 @@
 package com.library.service;
 
-import com.library.dto.LendingDTO;
+import com.library.dto.LendingRequestDTO;
+import com.library.dto.LendingResponseDTO;
 import java.util.List;
 
 public interface LendingService {
     
-    List<LendingDTO> getAllLendings();
+    List<LendingResponseDTO> getAllLendings();
     
-    LendingDTO getLendingById(String id);
+    LendingResponseDTO getLendingById(String id);
     
-    LendingDTO lendBook(String bookId, String memberId);
+    LendingResponseDTO lendBook(LendingRequestDTO lendingRequestDTO);
     
-    LendingDTO returnBook(String lendingId);
+    LendingResponseDTO returnBook(String lendingId);
     
-    List<LendingDTO> getLendingHistory();
+    List<LendingResponseDTO> getLendingHistory();
 }

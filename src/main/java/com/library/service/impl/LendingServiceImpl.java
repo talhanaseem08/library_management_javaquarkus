@@ -1,6 +1,7 @@
 package com.library.service.impl;
 
-import com.library.dto.LendingDTO;
+import com.library.dto.LendingRequestDTO;
+import com.library.dto.LendingResponseDTO;
 import com.library.exception.BookNotAvailableException;
 import com.library.exception.LendingNotFoundException;
 import com.library.service.BookService;
@@ -28,18 +29,18 @@ public class LendingServiceImpl implements LendingService {
     MemberService memberService;
     
     // In-memory storage using ConcurrentHashMap for thread safety
-    private final Map<String, LendingDTO> lendings = new ConcurrentHashMap<>();
+    private final Map<String, LendingResponseDTO> lendings = new ConcurrentHashMap<>();
     
     @Override
-    public List<LendingDTO> getAllLendings() {
+    public List<LendingResponseDTO> getAllLendings() {
         LOG.info("Retrieving all lendings. Total lendings: " + lendings.size());
         return new ArrayList<>(lendings.values());
     }
     
     @Override
-    public LendingDTO getLendingById(String id) {
+    public LendingResponseDTO getLendingById(String id) {
         LOG.info("Retrieving lending with ID: " + id);
-        LendingDTO lending = lendings.get(id);
+        LendingResponseDTO lending = lendings.get(id);
         if (lending == null) {
             LOG.error("Lending not found with ID: " + id);
             throw new LendingNotFoundException("Lending not found with ID: " + id);
@@ -48,38 +49,45 @@ public class LendingServiceImpl implements LendingService {
     }
     
     @Override
-    public LendingDTO lendBook(String bookId, String memberId) {
-        LOG.info("Lending book. Book ID: " + bookId + ", Member ID: " + memberId);
+    public LendingResponseDTO lendBook(LendingRequestDTO lendingRequestDTO) {
+        LOG.info("Lending book. Book ID: " + lendingRequestDTO.getBookId() + 
+                ", Member ID: " + lendingRequestDTO.getMemberId());
         
-        // Validate book exists and is available
-        var book = bookService.getBookById(bookId);
-        if (!book.isAvailable()) {
-            LOG.error("Book is not available for lending. Book ID: " + bookId);
-            throw new BookNotAvailableException("Book is not available for lending. Book ID: " + bookId);
+        // Validate book exists and has quantity available
+        var book = bookService.getBookById(lendingRequestDTO.getBookId());
+        if (book.getQuantity() <= 0) {
+            LOG.error("Book has no quantity available for lending. Book ID: " + lendingRequestDTO.getBookId());
+            throw new BookNotAvailableException("Book has no quantity available for lending. Book ID: " + lendingRequestDTO.getBookId());
         }
         
         // Validate member exists
-        memberService.getMemberById(memberId);
+        memberService.getMemberById(lendingRequestDTO.getMemberId());
         
         // Create lending record
         String lendingId = UUID.randomUUID().toString();
         String lendingDate = LocalDateTime.now().format(DATE_FORMATTER);
         
-        LendingDTO lending = new LendingDTO(lendingId, bookId, memberId, lendingDate, null);
+        LendingResponseDTO lending = new LendingResponseDTO(
+            lendingId, 
+            lendingRequestDTO.getBookId(), 
+            lendingRequestDTO.getMemberId(), 
+            lendingDate, 
+            null // returnDate is null when book is lent
+        );
         lendings.put(lendingId, lending);
         
-        // Mark book as unavailable
-        bookService.updateBookAvailability(bookId, false);
+        // Decrease book quantity
+        bookService.decreaseBookQuantity(lendingRequestDTO.getBookId());
         
         LOG.info("Book lent successfully: " + lending);
         return lending;
     }
     
     @Override
-    public LendingDTO returnBook(String lendingId) {
+    public LendingResponseDTO returnBook(String lendingId) {
         LOG.info("Returning book. Lending ID: " + lendingId);
         
-        LendingDTO lending = getLendingById(lendingId);
+        LendingResponseDTO lending = getLendingById(lendingId);
         
         // Check if book is already returned
         if (lending.getReturnDate() != null) {
@@ -89,18 +97,24 @@ public class LendingServiceImpl implements LendingService {
         
         // Mark book as returned
         String returnDate = LocalDateTime.now().format(DATE_FORMATTER);
-        lending.setReturnDate(returnDate);
-        lendings.put(lendingId, lending);
+        LendingResponseDTO updatedLending = new LendingResponseDTO(
+            lending.getLendingId(),
+            lending.getBookId(),
+            lending.getMemberId(),
+            lending.getLendingDate(),
+            returnDate
+        );
+        lendings.put(lendingId, updatedLending);
         
-        // Mark book as available
-        bookService.updateBookAvailability(lending.getBookId(), true);
+        // Increase book quantity
+        bookService.increaseBookQuantity(lending.getBookId());
         
-        LOG.info("Book returned successfully: " + lending);
-        return lending;
+        LOG.info("Book returned successfully: " + updatedLending);
+        return updatedLending;
     }
     
     @Override
-    public List<LendingDTO> getLendingHistory() {
+    public List<LendingResponseDTO> getLendingHistory() {
         LOG.info("Retrieving lending history. Total lendings: " + lendings.size());
         return new ArrayList<>(lendings.values());
     }

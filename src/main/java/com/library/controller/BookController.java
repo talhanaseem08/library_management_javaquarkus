@@ -1,6 +1,7 @@
 package com.library.controller;
 
-import com.library.dto.BookDTO;
+import com.library.dto.BookRequestDTO;
+import com.library.dto.BookResponseDTO;
 import com.library.service.BookService;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -34,7 +35,7 @@ public class BookController {
     })
     public Response getAllBooks() {
         LOG.info("GET /books - Retrieving all books");
-        List<BookDTO> books = bookService.getAllBooks();
+        List<BookResponseDTO> books = bookService.getAllBooks();
         return Response.ok(books).build();
     }
     
@@ -48,7 +49,7 @@ public class BookController {
     })
     public Response getBookById(@PathParam("id") String id) {
         LOG.info("GET /books/" + id + " - Retrieving book by ID");
-        BookDTO book = bookService.getBookById(id);
+        BookResponseDTO book = bookService.getBookById(id);
         return Response.ok(book).build();
     }
     
@@ -59,9 +60,9 @@ public class BookController {
         @APIResponse(responseCode = "400", description = "Invalid input data"),
         @APIResponse(responseCode = "500", description = "Internal server error")
     })
-    public Response createBook(@Valid BookDTO bookDTO) {
-        LOG.info("POST /books - Creating new book: " + bookDTO);
-        BookDTO createdBook = bookService.createBook(bookDTO);
+    public Response createBook(@Valid BookRequestDTO bookRequestDTO) {
+        LOG.info("POST /books - Creating new book: " + bookRequestDTO);
+        BookResponseDTO createdBook = bookService.createBook(bookRequestDTO);
         return Response.status(Response.Status.CREATED).entity(createdBook).build();
     }
     
@@ -74,9 +75,9 @@ public class BookController {
         @APIResponse(responseCode = "404", description = "Book not found"),
         @APIResponse(responseCode = "500", description = "Internal server error")
     })
-    public Response updateBook(@PathParam("id") String id, @Valid BookDTO bookDTO) {
+    public Response updateBook(@PathParam("id") String id, @Valid BookRequestDTO bookRequestDTO) {
         LOG.info("PUT /books/" + id + " - Updating book");
-        BookDTO updatedBook = bookService.updateBook(id, bookDTO);
+        BookResponseDTO updatedBook = bookService.updateBook(id, bookRequestDTO);
         return Response.ok(updatedBook).build();
     }
     
